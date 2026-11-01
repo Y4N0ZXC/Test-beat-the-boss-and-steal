@@ -1,0 +1,102 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Folders to monitor
+local workspaceEggs = Workspace:FindFirstChild("Eggs") or Workspace
+local storageEggs = ReplicatedStorage:FindFirstChild("Eggs") or ReplicatedStorage
+
+-- Target keywords
+local targetKeywords = {
+	"huge",
+	"giant",
+	"colossal"
+}
+
+-- Function to create a small non-intrusive notification UI
+local function triggerSmallAlert(eggName, matchedKeyword)
+	-- Remove old alert if present to keep screen clean
+	local oldGui = playerGui:FindFirstChild("SmallEggAlertGui")
+	if oldGui then
+		oldGui:Destroy()
+	end
+
+	-- ScreenGui
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "SmallEggAlertGui"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = playerGui
+
+	-- Alert Frame (Top-Right position)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 260, 0, 45)
+	frame.Position = UDim2.new(1, -270, 0, 20) -- Top Right Corner
+	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	frame.BackgroundTransparency = 0.2
+	frame.BorderSizePixel = 0
+	frame.Parent = screenGui
+
+	-- Corner rounding
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = frame
+
+	-- Red Exclamation Icon
+	local iconLabel = Instance.new("TextLabel")
+	iconLabel.Size = UDim2.new(0, 35, 1, 0)
+	iconLabel.Position = UDim2.new(0, 5, 0, 0)
+	iconLabel.BackgroundTransparency = 1
+	iconLabel.Text = "!"
+	iconLabel.TextColor3 = Color3.fromRGB(255, 50, 50) -- Bright Red
+	iconLabel.TextSize = 28
+	iconLabel.Font = Enum.Font.FredokaOne
+	iconLabel.Parent = frame
+
+	-- Egg Name Text
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, -45, 1, 0)
+	textLabel.Position = UDim2.new(0, 40, 0, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.Text = eggName .. " (" .. string.upper(matchedKeyword) .. ")"
+	textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	textLabel.TextSize = 15
+	textLabel.Font = Enum.Font.SourceSansBold
+	textLabel.TextXAlignment = Enum.TextXAlignment.Left
+	textLabel.Parent = frame
+
+	-- Automatically remove after 2 seconds with fade-out
+	task.delay(2, function()
+		if not screenGui.Parent then return end
+		
+		local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local fadeFrame = TweenService:Create(frame, tweenInfo, {BackgroundTransparency = 1})
+		local fadeIcon = TweenService:Create(iconLabel, tweenInfo, {TextTransparency = 1})
+		local fadeText = TweenService:Create(textLabel, tweenInfo, {TextTransparency = 1})
+
+		fadeFrame:Play()
+		fadeIcon:Play()
+		fadeText:Play()
+
+		fadeFrame.Completed:Wait()
+		screenGui:Destroy()
+	end)
+end
+
+-- Detection function to check spawned objects
+local function checkEgg(object)
+	local nameLower = string.lower(object.Name)
+	for _, word in ipairs(targetKeywords) do
+		if string.find(nameLower, word) then
+			triggerSmallAlert(object.Name, word)
+			break
+		end
+	end
+end
+
+-- Listen for new objects in Workspace and ReplicatedStorage
+workspaceEggs.ChildAdded:Connect(checkEgg)
+storageEggs.ChildAdded:Connect(checkEgg)
